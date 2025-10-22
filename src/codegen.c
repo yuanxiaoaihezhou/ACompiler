@@ -15,12 +15,20 @@ void gen_pop(char *reg) {
 
 // Generate address of a variable
 void gen_lval(Node *node) {
-    if (node->kind != ND_LVAR)
-        error("Not an lvalue");
+    if (node->kind == ND_LVAR) {
+        printf("  mov rax, rbp\n");
+        printf("  sub rax, %d\n", node->offset);
+        gen_push();
+        return;
+    }
     
-    printf("  mov rax, rbp\n");
-    printf("  sub rax, %d\n", node->offset);
-    gen_push();
+    if (node->kind == ND_DEREF) {
+        gen(node->lhs);
+        gen_push();
+        return;
+    }
+    
+    error("Not an lvalue");
 }
 
 // Generate code for an expression
