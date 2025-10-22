@@ -1,6 +1,7 @@
 #include "compiler.h"
 
 static int label_seq = 0;
+static char *current_func = NULL;
 
 // Generate code to push to stack
 void gen_push() {
@@ -58,7 +59,7 @@ void gen(Node *node) {
     
     case ND_RETURN:
         gen(node->lhs);
-        printf("  jmp .L.return\n");
+        printf("  jmp .L.return.%s\n", current_func);
         return;
     
     case ND_IF: {
@@ -171,24 +172,16 @@ void gen(Node *node) {
         printf("  imul rax, rdi\n");
         return;
     case ND_DIV:
+        printf("  mov rcx, rax\n");
         printf("  mov rax, rdi\n");
         printf("  cqo\n");
-        printf("  mov rdi, [rsp]\n");
-        printf("  add rsp, 8\n");
-        gen_push();
-        gen(node->rhs);
-        gen_pop("rdi");
-        printf("  idiv rdi\n");
+        printf("  idiv rcx\n");
         return;
     case ND_MOD:
+        printf("  mov rcx, rax\n");
         printf("  mov rax, rdi\n");
         printf("  cqo\n");
-        printf("  mov rdi, [rsp]\n");
-        printf("  add rsp, 8\n");
-        gen_push();
-        gen(node->rhs);
-        gen_pop("rdi");
-        printf("  idiv rdi\n");
+        printf("  idiv rcx\n");
         printf("  mov rax, rdx\n");
         return;
     case ND_EQ:
@@ -274,6 +267,7 @@ void codegen(Function *prog) {
     // Generate code for each function
     printf(".text\n");
     for (Function *fn = prog; fn; fn = fn->next) {
+        current_func = fn->name;
         printf(".globl %s\n", fn->name);
         printf("%s:\n", fn->name);
         
@@ -293,8 +287,8 @@ void codegen(Function *prog) {
             gen(fn->stmts[i]);
         }
         
-        // Epilogue
-        printf(".L.return:\n");
+        // Epilogue (with function-specific label)
+        printf(".L.return.%s:\n", fn->name);
         printf("  mov rsp, rbp\n");
         printf("  pop rbp\n");
         printf("  ret\n");
